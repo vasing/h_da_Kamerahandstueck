@@ -18,7 +18,8 @@
 #include <BufferedCameraOV7670_QQVGA.h>
 #include <BufferedCameraOV7670_QVGA.h>
 #include <BufferedCameraOV7670_QQVGA_10hz_Grayscale.h>
-#include "GrayScaleTable.h"
+//#include <CameraOV7670.h>
+//#include "GrayScaleTable.h"
 //#include "Adafruit_ST7735_mod.h"
 
 #define GRAYSCALE_PIXELS 0
@@ -48,9 +49,9 @@ int TFT_DC = 8;
 Adafruit_ST7735_mod tft = Adafruit_ST7735_mod(TFT_CS, TFT_DC, TFT_RST);
 */
 
-inline void sendLineToDisplay() __attribute__((always_inline));
-inline void screenLineStart(void) __attribute__((always_inline));
-inline void screenLineEnd(void) __attribute__((always_inline));
+//inline void sendLineToDisplay() __attribute__((always_inline));
+//inline void screenLineStart(void) __attribute__((always_inline));
+//inline void screenLineEnd(void) __attribute__((always_inline));
 inline void sendPixelByte(uint8_t byte) __attribute__((always_inline));
 
 
@@ -76,40 +77,28 @@ void setup() {
 void loop() {
 
 /*EXAMPLE_TFT_BUFFERED*/
-    uint8_t pixelByte;
-    screenLineIndex = screen_h;
+    //screenLineIndex = screen_h;
 
+    int 
+
+    noInterrupts();
     camera.waitForVsync();
     camera.ignoreVerticalPadding();
-  
-    for (uint16_t y = 0; y < lineCount; y++) {
-        screenLineStart();
-        camera.ignoreHorizontalPaddingLeft();
 
-        for (uint16_t x = 0; x < lineLength; x++) {
-
-          camera.waitForPixelClockRisingEdge();
-          camera.readPixelByte(pixelByte);
-          sendPixelByte(pixelByte);
-
-          camera.waitForPixelClockRisingEdge();
-          camera.readPixelByte(pixelByte);
-          sendPixelByte(pixelByte);
-        }
-
-    camera.ignoreHorizontalPaddingRight();
-    pixelSendingDelay(); // prevent sending collision
-    screenLineEnd();
-  }
-  
+    for (uint8_t i = 0; i < camera.getLineCount(); i++) {
+        //Serial.println(camera.readLine());
+        //sendLineToDisplay();
+    }
+    interrupts();
 }
 
 
-
+/*
 static const uint16_t byteCountForDisplay = camera.getPixelBufferLength() < screen_w * 2 ?
     camera.getPixelBufferLength() : screen_w * 2;
+*/
 
-
+/*
 void sendLineToDisplay() {
     if (screenLineIndex > 0) {
 
@@ -127,18 +116,22 @@ void sendLineToDisplay() {
         screenLineEnd();
     }
 }
+*/
 
-
+/*
 void screenLineStart() {
     if (screenLineIndex > 0) screenLineIndex--;
     tft.startAddrWindow(screenLineIndex, 0, screenLineIndex, screen_w - 1);
 }
+*/
 
+/*
 void screenLineEnd() {
     tft.endAddrWindow();
 }
+*/
 
-
+/*
 void sendPixelByte(uint8_t byte) {
     SPDR = byte;
 
@@ -160,4 +153,5 @@ void sendPixelByte(uint8_t byte) {
 #endif
 
 }
+*/
 
