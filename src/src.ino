@@ -14,26 +14,26 @@
 */
 
 // # Live-OV7670 includes
-#include <BufferedCameraOV7670_QQVGA_10hz.h>
-#include <BufferedCameraOV7670_QQVGA.h>
-#include <BufferedCameraOV7670_QVGA.h>
-#include <BufferedCameraOV7670_QQVGA_10hz_Grayscale.h>
-#include "GrayScaleTable.h"
+#include "CameraOV7670.h"
 //#include "Adafruit_ST7735_mod.h"
 
-#define GRAYSCALE_PIXELS 0
+// scaler values for specific refresh rates
+static const uint8_t FPS_1_Hz = 9;
+static const uint8_t FPS_0p5_Hz = 19;
+static const uint8_t FPS_0p33_Hz = 29;
 
-#if GRAYSCALE_PIXELS == 1
-BufferedCameraOV7670_QQVGA_10hz_Grayscale camera;
-#else
-BufferedCameraOV7670_QQVGA_10hz camera(CameraOV7670::PIXEL_RGB565);
-//BufferedCameraOV7670_QQVGA camera(CameraOV7670::PIXEL_RGB565, BufferedCameraOV7670_QQVGA::FPS_5_Hz);
-//BufferedCameraOV7670_QQVGA camera(CameraOV7670::PIXEL_RGB565, BufferedCameraOV7670_QQVGA::FPS_2_Hz);
-//BufferedCameraOV7670_QVGA camera(CameraOV7670::PIXEL_RGB565, BufferedCameraOV7670_QVGA::FPS_2p5_Hz);
-#endif
 
-// TFT hier nicht verwendet
+static const uint16_t lineLength = 640;
+static const uint16_t lineCount = 480;
+
+
+
 /*
+// Since the 1.8" TFT screen is only 160x128 only top right corner of the VGA picture is visible.
+CameraOV7670 camera(CameraOV7670::RESOLUTION_VGA_640x480, CameraOV7670::PIXEL_RGB565, FPS_1_Hz);
+
+
+
 #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
 int TFT_RST = 49;
 int TFT_CS = 53;
@@ -48,15 +48,6 @@ int TFT_DC = 8;
 Adafruit_ST7735_mod tft = Adafruit_ST7735_mod(TFT_CS, TFT_DC, TFT_RST);
 */
 
-inline void sendLineToDisplay() __attribute__((always_inline));
-inline void screenLineStart(void) __attribute__((always_inline));
-inline void screenLineEnd(void) __attribute__((always_inline));
-inline void sendPixelByte(uint8_t byte) __attribute__((always_inline));
-
-
-// Normally it is a portrait screen. Use it as landscape
-uint8_t screenLineIndex;
-
 
 
 void setup() {
@@ -69,64 +60,56 @@ void setup() {
         Serial.println("Camera Initialized");
     } else {
         Serial.println("ERROR Camera init. failed");
-    delay(3000);    //todo checkout long delay!!! 
+        delay(3000);    //todo checkout long delay!!! 
     }
+    TIMSK0 = 0; // disable "millis" timer interrupt
 }
+
+
+
+inline void screenLineStart(void) __attribute__((always_inline));
+inline void screenLineEnd(void) __attribute__((always_inline));
+inline void sendPixelByte(uint8_t byte) __attribute__((always_inline));
+inline void pixelSendingDelay() __attribute__((always_inline));
+
+// Normally it is a portrait screen. Use it as landscape
+uint8_t screen_w = ST7735_TFTHEIGHT_18;
+uint8_t screen_h = ST7735_TFTWIDTH;
+uint8_t screenLineIndex;
+
+
 
 void loop() {
 
-/*EXAMPLE_TFT_BUFFERED*/
+/*EXAMPLE_TFT_PIXELBYPIXEL*/
     uint8_t pixelByte;
     screenLineIndex = screen_h;
 
     camera.waitForVsync();
     camera.ignoreVerticalPadding();
-  
+
     for (uint16_t y = 0; y < lineCount; y++) {
         screenLineStart();
         camera.ignoreHorizontalPaddingLeft();
 
         for (uint16_t x = 0; x < lineLength; x++) {
 
-          camera.waitForPixelClockRisingEdge();
-          camera.readPixelByte(pixelByte);
-          sendPixelByte(pixelByte);
+            camera.waitForPixelClockRisingEdge();
+            camera.readPixelByte(pixelByte);
+            sendPixelByte(pixelByte);
 
-          camera.waitForPixelClockRisingEdge();
-          camera.readPixelByte(pixelByte);
-          sendPixelByte(pixelByte);
+            camera.waitForPixelClockRisingEdge();
+            camera.readPixelByte(pixelByte);
+            sendPixelByte(pixelByte);
         }
 
-    camera.ignoreHorizontalPaddingRight();
-    pixelSendingDelay(); // prevent sending collision
-    screenLineEnd();
-  }
+        camera.ignoreHorizontalPaddingRight();
+        pixelSendingDelay(); // prevent sending collision
+        screenLineEnd();
+    }
   
 }
 
-
-
-static const uint16_t byteCountForDisplay = camera.getPixelBufferLength() < screen_w * 2 ?
-    camera.getPixelBufferLength() : screen_w * 2;
-
-
-void sendLineToDisplay() {
-    if (screenLineIndex > 0) {
-
-        screenLineStart();
-#if GRAYSCALE_PIXELS == 1
-        for (uint16_t i = 0; i < camera.getLineLength(); i++) {
-            sendPixelByte(graysScaleTableHigh[camera.getPixelByte(i)]);
-            sendPixelByte(graysScaleTableLow[camera.getPixelByte(i)]);
-        }
-#else
-        for (uint16_t i = 0; i < byteCountForDisplay; i++) {
-            sendPixelByte(camera.getPixelByte(i));
-        }
-#endif
-        screenLineEnd();
-    }
-}
 
 
 void screenLineStart() {
@@ -144,20 +127,41 @@ void sendPixelByte(uint8_t byte) {
 
     // this must be adjusted if sending loop has more/less instructions
 
+    /*
     asm volatile("nop");
     asm volatile("nop");
     asm volatile("nop");
     asm volatile("nop");
     asm volatile("nop");
+    asm volatile("nop");
+    asm volatile("nop");
+    */
+}
 
-#if GRAYSCALE_PIXELS == 1
+
+
+void pixelSendingDelay() {
     asm volatile("nop");
     asm volatile("nop");
     asm volatile("nop");
     asm volatile("nop");
     asm volatile("nop");
     asm volatile("nop");
-#endif
+    asm volatile("nop");
+    asm volatile("nop");
+    asm volatile("nop");
+    asm volatile("nop");
+    asm volatile("nop");
+    asm volatile("nop");
+    asm volatile("nop");
+    asm volatile("nop");
+    asm volatile("nop");
+    asm volatile("nop");
+    asm volatile("nop");
+    asm volatile("nop");
 
 }
+
+
+
 
