@@ -347,7 +347,7 @@ void processGrayscaleFrameBuffered() {
             camera.waitForPixelClockRisingEdge(); // YUV422 grayscale byte
             camera.readPixelByte(lineBuffer[x]);
             lineBuffer[x] = formatPixelByteGrayscaleFirst(lineBuffer[x]);
-            //lineBuffer[x] = formatPixelByteBinary(lineBuffer[x]);
+            lineBuffer[x] = formatPixelByteBinary(lineBuffer[x]); //Tislenko
 
             camera.waitForPixelClockRisingEdge(); // YUV422 color byte. Ignore.
             if (isSendWhileBuffering) {
@@ -358,6 +358,7 @@ void processGrayscaleFrameBuffered() {
             camera.waitForPixelClockRisingEdge(); // YUV422 grayscale byte
             camera.readPixelByte(lineBuffer[x]);
             lineBuffer[x] = formatPixelByteGrayscaleSecond(lineBuffer[x]);
+            lineBuffer[x] = formatPixelByteBinary(lineBuffer[x]); //Tislenko
 
             camera.waitForPixelClockRisingEdge(); // YUV422 color byte. Ignore.
             if (isSendWhileBuffering) {
@@ -398,7 +399,7 @@ void processGrayscaleFrameDirect() {
         while (x < lineLength) {
             camera.waitForPixelClockRisingEdge(); // YUV422 grayscale byte
             camera.readPixelByte(lineBuffer[0]);
-            lineBuffer[0] = formatPixelByteGrayscaleFirst(lineBuffer[0]);
+            lineBuffer[0] = formatPixelByteGrayscaleFirst(lineBuffer[0]); 
 
             camera.waitForPixelClockRisingEdge(); // YUV422 color byte. Ignore.
             waitForPreviousUartByteToBeSent();
@@ -407,7 +408,7 @@ void processGrayscaleFrameDirect() {
 
             camera.waitForPixelClockRisingEdge(); // YUV422 grayscale byte
             camera.readPixelByte(lineBuffer[0]);
-            lineBuffer[0] = formatPixelByteGrayscaleSecond(lineBuffer[0]);
+            lineBuffer[0] = formatPixelByteGrayscaleSecond(lineBuffer[0]); 
 
             camera.waitForPixelClockRisingEdge(); // YUV422 color byte. Ignore.
             waitForPreviousUartByteToBeSent();
@@ -628,7 +629,7 @@ bool isUartReady() {
 
 
 
-uint8_t formatPixelByteBinary(uint8_t pixelByte) {
+uint8_t formatPixelByteBinary(uint8_t pixelByte) { //Tislenko
 
     if (pixelByte <= BinaryLimit) {
         pixelByte = 0b00000010;
