@@ -20,14 +20,15 @@ void setup() {
   CLKPR = 0x80; // enter clock rate change mode
   CLKPR = 0; // set prescaler to 0. WAVGAT MCU has it 3 by default.
 
-  //initializeScreenAndCamera(); //Tislenko auskom. für LRA Test
+  initializeScreenAndCamera(); //Tislenko auskom. für LRA Test
 
-  Serial.begin(9600);
+  //Serial.begin(9600);
   Serial.println("DRV test");
 
-  DRVcalib(7);    //calibration for DVR on TCA port 7
-  DRVcalib(6);    //calibration for DVR on TCA port 6
-
+  DRVcalib(0);    //calibration for DVR on TCA port 0
+  DRVcalib(1);    //calibration for DVR on TCA port 1
+  DRVcalib(2);    //calibration for DVR on TCA port 2
+  DRVcalib(3);    //calibration for DVR on TCA port 3
 }
 
 
