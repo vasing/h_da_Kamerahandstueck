@@ -108,6 +108,7 @@
   <ItemGroup>
     <ClInclude Include="Adafruit_ST7735_mod.h" />
     <ClInclude Include="GrayScaleTable.h" />
+    <ClInclude Include="MyTCA9548A.h" />
     <ClInclude Include="setup.h" />
     <ClInclude Include="__vm\.LiveOV7670.vsarduino.h" />
   </ItemGroup>

@@ -33,7 +33,7 @@ void setup() {
 
 
 void loop() {
-  //processFrame();       //Tislenko auskom. für LRA Test
+  processFrame();       //Tislenko auskom. für LRA Test
 
   sentGo(0);      //sent DVR waveform trigger on oprt 7
   delay(1000);
