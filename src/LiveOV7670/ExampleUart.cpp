@@ -29,8 +29,9 @@
 // 17 - 2Mbps 640x480 grayscale
 #define UART_MODE 8
 
+
 //Tislenko: Globale Variablen 
-//Tislenko: Parameter für Graustufen Limit in Funktion formatPixelByteBinary()
+//Tislenko: Parameter fuer Graustufen Limit in Funktion formatPixelByteBinary()
 const uint8_t BinaryLimit = 128; // Graustufen Limit
 
 //Nutzdaten (Anzahl Pixel in horiz. Linien): 160 bei UART MODE 1,2,7,8,12,13
@@ -303,7 +304,7 @@ inline void formatNextRgbPixelByteInBuffer() __attribute__((always_inline));
 inline uint8_t formatRgbPixelByteH(uint8_t byte) __attribute__((always_inline));
 inline uint8_t formatRgbPixelByteL(uint8_t byte) __attribute__((always_inline));
 inline uint8_t formatPixelByteGrayscaleFirst(uint8_t byte) __attribute__((always_inline));
-inline uint8_t formatPixelByteBinary(uint8_t byte) __attribute__((always_inline));
+//inline uint8_t formatPixelByteBinary(uint8_t byte) __attribute__((always_inline));
 inline uint8_t formatPixelByteGrayscaleSecond(uint8_t byte) __attribute__((always_inline));
 inline void waitForPreviousUartByteToBeSent() __attribute__((always_inline));
 inline bool isUartReady() __attribute__((always_inline));
@@ -381,7 +382,7 @@ void processGrayscaleFrameBuffered() {
             camera.waitForPixelClockRisingEdge(); // YUV422 grayscale byte
             camera.readPixelByte(lineBuffer[x]);
             lineBuffer[x] = formatPixelByteGrayscaleFirst(lineBuffer[x]);
-            lineBuffer[x] = formatPixelByteBinary(lineBuffer[x]); //Tislenko
+            //lineBuffer[x] = formatPixelByteBinary(lineBuffer[x]); //Tislenko
 
             camera.waitForPixelClockRisingEdge(); // YUV422 color byte. Ignore.
             if (isSendWhileBuffering) {
@@ -392,7 +393,7 @@ void processGrayscaleFrameBuffered() {
             camera.waitForPixelClockRisingEdge(); // YUV422 grayscale byte
             camera.readPixelByte(lineBuffer[x]);
             lineBuffer[x] = formatPixelByteGrayscaleSecond(lineBuffer[x]);
-            lineBuffer[x] = formatPixelByteBinary(lineBuffer[x]); //Tislenko
+            //lineBuffer[x] = formatPixelByteBinary(lineBuffer[x]); //Tislenko
 
             camera.waitForPixelClockRisingEdge(); // YUV422 color byte. Ignore.
             if (isSendWhileBuffering) {

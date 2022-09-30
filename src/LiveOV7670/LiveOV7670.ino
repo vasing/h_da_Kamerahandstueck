@@ -12,7 +12,11 @@ void sentGo(int I2CPort);
 // change setup.h to switch between buffered and pixel-by-pixel processing
 #include "setup.h"
 
+#define UART_MODE 18
 
+//Tislenko
+#define UART_ONLY 0 //0 - Schaltet LRA Ansteuerung aus
+                    //1 - Schaltet LRA Ansteuerung ein
 
 void setup() {
   // This is not necessary and has no effect for ATMEGA based Arduinos.
@@ -35,6 +39,7 @@ void setup() {
 void loop() {
   processFrame();       //Tislenko auskom. für LRA Test
 
+#if ONLY_UART==1
   sentGo(0);      //sent DVR waveform trigger on oprt 7
   delay(1000);
   sentGo(1);      //sent DVR waveform trigger on oprt 6
@@ -43,7 +48,7 @@ void loop() {
   delay(1000);
   sentGo(3);      //sent DVR waveform trigger on oprt 6
   delay(1000);
-
+#endif
 }
 
 
