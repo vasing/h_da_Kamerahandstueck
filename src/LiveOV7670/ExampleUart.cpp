@@ -29,7 +29,25 @@
 // 17 - 2Mbps 640x480 grayscale
 #define UART_MODE 8
 
+//Tislenko: Globale Variablen 
+//Tislenko: Parameter für Graustufen Limit in Funktion formatPixelByteBinary()
 const uint8_t BinaryLimit = 128; // Graustufen Limit
+
+//Nutzdaten (Anzahl Pixel in horiz. Linien): 160 bei UART MODE 1,2,7,8,12,13
+//0b0000000 ist Fehlerwert
+//groeßer 0b10100000 (160) ist nicht plausibel
+uint8_t LINE_1 = 0b0000000; 
+uint8_t LINE_2 = 0b0000000; 
+uint8_t LINE_3 = 0b0000000; 
+uint8_t LINE_4 = 0b0000000;
+
+//Nutzdaten (Anzahl Pixel in vert. Linien): 120  UART MODE 8 1,2,7,8,12,13
+//0b0000000 ist Fehlerwert
+//groeßer 0b01111000 (120) ist nicht plausibel
+uint8_t ROW_1 = 0b00000000;
+uint8_t ROW_2 = 0b00000000;
+uint8_t ROW_3 = 0b00000000;
+uint8_t ROW_4 = 0b00000000;
 
 
 const uint8_t VERSION = 0x10;
@@ -252,6 +270,17 @@ const uint8_t uartPixelFormat = UART_PIXEL_FORMAT_GRAYSCALE;
 CameraOV7670 camera(CameraOV7670::RESOLUTION_VGA_640x480, CameraOV7670::PIXEL_YUV422, 19);
 #endif
 
+//Tislenko: Eigener UART MODE 
+#if UART_MODE==18
+const uint16_t lineLength = 160;
+const uint16_t lineCount = 120;
+const uint32_t baud = 1000000;
+const ProcessFrameData processFrameData = processGrayscaleFrameDirect;
+const uint16_t lineBufferLength = 1;
+const bool isSendWhileBuffering = true;
+const uint8_t uartPixelFormat = UART_PIXEL_FORMAT_GRAYSCALE;
+CameraOV7670 camera(CameraOV7670::RESOLUTION_QQVGA_160x120, CameraOV7670::PIXEL_YUV422, 2);
+#endif
 
 uint8_t lineBuffer[lineBufferLength]; // Two bytes per pixel
 uint8_t* lineBufferSendByte;
@@ -291,10 +320,12 @@ void initializeScreenAndCamera() {
 
     Serial.begin(baud);
     if (camera.init()) {
+        //todo Konfigurierbar machen zwischen Normalbetrieb und ArduinoCapture
         sendBlankFrame(COLOR_GREEN);
         delay(1000);
     }
     else {
+        //todo Konfigurierbar machen zwischen Normalbetrieb und ArduinoCapture
         sendBlankFrame(COLOR_RED);
         delay(3000);
     }
@@ -322,6 +353,7 @@ void sendBlankFrame(uint16_t color) {
 // this is called in Arduino loop() function
 void processFrame() {
     processedByteCountDuringCameraRead = 0;
+    //todo Konfigurierbar machen zwischen Normalbetrieb und ArduinoCapture
     commandStartNewFrame(uartPixelFormat);
     noInterrupts();
     processFrameData();
@@ -337,13 +369,15 @@ void processGrayscaleFrameBuffered() {
     commandDebugPrint("Vsync");
 
     camera.ignoreVerticalPadding();
-
-    for (uint16_t y = 0; y < lineCount; y++) {
+    //Hier wird jede Reihe (Linie) durchlaufen
+    for (uint16_t y = 0; y < lineCount; y++) {  
         lineBufferSendByte = &lineBuffer[0];
         camera.ignoreHorizontalPaddingLeft();
 
+        //Hier wird jede Spalte (Pixel) durchlaufen
+        //todo Hier auch Datenerfassung in Abhaengigkeit vom Pixel
         uint16_t x = 0;
-        while (x < lineBufferLength) {
+        while (x < lineBufferLength) {       
             camera.waitForPixelClockRisingEdge(); // YUV422 grayscale byte
             camera.readPixelByte(lineBuffer[x]);
             lineBuffer[x] = formatPixelByteGrayscaleFirst(lineBuffer[x]);
@@ -375,6 +409,9 @@ void processGrayscaleFrameBuffered() {
         while (lineBufferSendByte < &lineBuffer[lineLength]) {
             processNextGrayscalePixelByteInBuffer();
         }
+
+        //todo Hier Datenerfassung in Abhaengigkeit der Linie
+
     };
 }
 
