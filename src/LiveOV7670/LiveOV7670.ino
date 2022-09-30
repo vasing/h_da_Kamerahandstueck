@@ -15,7 +15,7 @@ void sentGo(int I2CPort);
 #define UART_MODE 18
 
 //Tislenko
-#define UART_ONLY 0 //0 - Schaltet LRA Ansteuerung aus
+#define UART_ONLY 1 //0 - Schaltet LRA Ansteuerung aus
                     //1 - Schaltet LRA Ansteuerung ein
 
 void setup() {
@@ -37,18 +37,44 @@ void setup() {
 
 
 void loop() {
-  processFrame();       //Tislenko auskom. für LRA Test
+    int FrameNumber_T = 5;
 
-#if ONLY_UART==1
+    for (int i = 0; i < FrameNumber_T; i++) {
+        processFrame();       //Tislenko auskom. für LRA Test
+        }
+    
+
+#if UART_ONLY==1
+    //Serial.println("link");
+    sentGo(0);      //sent DVR waveform trigger on oprt 7
+    //delay(1000);
+    //Serial.println("unten");
+    sentGo(1);      //sent DVR waveform trigger on oprt 6
+    //delay(1000);
+    //Serial.println("rechts");
+    sentGo(2);      //sent DVR waveform trigger on oprt 6
+    //delay(1000);
+    //Serial.println("oben");
+    sentGo(3);      //sent DVR waveform trigger on oprt 6
+    //delay(1000);
+#endif
+
+/*
+#if UART_ONLY==1
+  Serial.println("link");
   sentGo(0);      //sent DVR waveform trigger on oprt 7
   delay(1000);
+  Serial.println("unten");
   sentGo(1);      //sent DVR waveform trigger on oprt 6
   delay(1000);
+  Serial.println("rechts");
   sentGo(2);      //sent DVR waveform trigger on oprt 6
   delay(1000);
+  Serial.println("oben");
   sentGo(3);      //sent DVR waveform trigger on oprt 6
   delay(1000);
 #endif
+*/
 }
 
 

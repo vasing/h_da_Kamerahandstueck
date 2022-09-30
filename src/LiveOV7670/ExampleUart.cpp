@@ -27,7 +27,7 @@
 // 15 - 2Mbps 320x240 grayscale
 // 16 - 2Mbps 640x480 rgb
 // 17 - 2Mbps 640x480 grayscale
-#define UART_MODE 18
+#define UART_MODE 8
 
 
 //Tislenko: Globale Variablen 
