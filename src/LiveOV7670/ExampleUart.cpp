@@ -27,7 +27,7 @@
 // 15 - 2Mbps 320x240 grayscale
 // 16 - 2Mbps 640x480 rgb
 // 17 - 2Mbps 640x480 grayscale
-#define UART_MODE 8
+#define UART_MODE 18
 
 
 //Tislenko: Globale Variablen 
@@ -280,7 +280,8 @@ const ProcessFrameData processFrameData = processGrayscaleFrameDirect;
 const uint16_t lineBufferLength = 1;
 const bool isSendWhileBuffering = true;
 const uint8_t uartPixelFormat = UART_PIXEL_FORMAT_GRAYSCALE;
-CameraOV7670 camera(CameraOV7670::RESOLUTION_QQVGA_160x120, CameraOV7670::PIXEL_YUV422, 2);
+CameraOV7670 camera(CameraOV7670::RESOLUTION_QQVGA_160x120, CameraOV7670::PIXEL_YUV422, 39);
+//Tislenko: Kontrast und Helligkeit Voreinstellungen
 #endif
 
 uint8_t lineBuffer[lineBufferLength]; // Two bytes per pixel
@@ -425,6 +426,8 @@ void processNextGrayscalePixelByteInBuffer() {
 
 
 void processGrayscaleFrameDirect() {
+    //uint8_t setContrast = 0x80;
+    //camera.setContrast(setContrast);
     camera.waitForVsync();
     commandDebugPrint("Vsync");
 
