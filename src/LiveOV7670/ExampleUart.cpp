@@ -37,18 +37,18 @@ const uint8_t BinaryLimit = 128; // Graustufen Limit
 //Nutzdaten (Anzahl Pixel in horiz. Linien): 160 bei UART MODE 1,2,7,8,12,13
 //0b0000000 ist Fehlerwert
 //groeﬂer 0b10100000 (160) ist nicht plausibel
+uint8_t LINE_0 = 0b0000000; 
 uint8_t LINE_1 = 0b0000000; 
 uint8_t LINE_2 = 0b0000000; 
-uint8_t LINE_3 = 0b0000000; 
-uint8_t LINE_4 = 0b0000000;
+uint8_t LINE_3 = 0b0000000;
 
 //Nutzdaten (Anzahl Pixel in vert. Linien): 120  UART MODE 8 1,2,7,8,12,13
 //0b0000000 ist Fehlerwert
 //groeﬂer 0b01111000 (120) ist nicht plausibel
+uint8_t ROW_0 = 0b00000000;
 uint8_t ROW_1 = 0b00000000;
 uint8_t ROW_2 = 0b00000000;
 uint8_t ROW_3 = 0b00000000;
-uint8_t ROW_4 = 0b00000000;
 
 
 const uint8_t VERSION = 0x10;
@@ -321,8 +321,11 @@ void initializeScreenAndCamera() {
     //CLKPR = 1; // set prescaler to 1. WAVGAT MCU has it 3 by default.
 
     Serial.begin(baud);
-    if (camera.init()) {
-        //todo Konfigurierbar machen zwischen Normalbetrieb und ArduinoCapture
+
+
+    if (camera.init()) {    //OV7570 initialisieren
+//Konfigurierbar zwischen Normalbetrieb und ArduinoCapture Mode
+#if UART_INIT==1            
         sendBlankFrame(COLOR_GREEN);
         delay(1000);
     }
@@ -330,7 +333,22 @@ void initializeScreenAndCamera() {
         //todo Konfigurierbar machen zwischen Normalbetrieb und ArduinoCapture
         sendBlankFrame(COLOR_RED);
         delay(3000);
+#endif
+
+//Wenn Kontrast manuell definiert und nicht auskommentiert
+//#ifdef CONTRAST
+        camera.setContrast(255);
+//#endif
+
+//Wenn Helligkeit manuell definier und nicht auskommentiert
+//#ifdef BRIGHTNESS
+        camera.setBrightness(32);
+//#endif
+
+        //Delay, sonnst ist if() leer
+        delay(100);
     }
+
 }
 
 
@@ -380,37 +398,44 @@ void processGrayscaleFrameBuffered() {
         //todo Hier auch Datenerfassung in Abhaengigkeit vom Pixel
         uint16_t x = 0;
         while (x < lineBufferLength) {       
+            
             camera.waitForPixelClockRisingEdge(); // YUV422 grayscale byte
-            camera.readPixelByte(lineBuffer[x]);
+            camera.readPixelByte(lineBuffer[x]);    //readPixelByte() schreibt in den Speicher von lineBuffer[x] die Pixel Bytes
             lineBuffer[x] = formatPixelByteGrayscaleFirst(lineBuffer[x]);
             //lineBuffer[x] = formatPixelByteBinary(lineBuffer[x]); //Tislenko
-
+            
             camera.waitForPixelClockRisingEdge(); // YUV422 color byte. Ignore.
-            if (isSendWhileBuffering) {
+           
+            if (isSendWhileBuffering) {     //false f¸r UART MODE 8
                 processNextGrayscalePixelByteInBuffer();
             }
+           
             x++;
-
+            /**/
             camera.waitForPixelClockRisingEdge(); // YUV422 grayscale byte
             camera.readPixelByte(lineBuffer[x]);
             lineBuffer[x] = formatPixelByteGrayscaleSecond(lineBuffer[x]);
             //lineBuffer[x] = formatPixelByteBinary(lineBuffer[x]); //Tislenko
 
+            
             camera.waitForPixelClockRisingEdge(); // YUV422 color byte. Ignore.
+            
             if (isSendWhileBuffering) {
                 processNextGrayscalePixelByteInBuffer();
             }
-            x++;
-        }
+            
+            x++;     
+        }   
         camera.ignoreHorizontalPaddingRight();
 
         // Debug info to get some feedback how mutch data was processed during line read.
         processedByteCountDuringCameraRead = lineBufferSendByte - (&lineBuffer[0]);
-
+        
         // Send rest of the line
         while (lineBufferSendByte < &lineBuffer[lineLength]) {
             processNextGrayscalePixelByteInBuffer();
         }
+        
 
         //todo Hier Datenerfassung in Abhaengigkeit der Linie
 

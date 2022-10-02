@@ -12,11 +12,15 @@ void sentGo(int I2CPort);
 // change setup.h to switch between buffered and pixel-by-pixel processing
 #include "setup.h"
 
-#define UART_MODE 18
-
 //Tislenko
-#define UART_ONLY 1 //0 - Schaltet LRA Ansteuerung aus
-                    //1 - Schaltet LRA Ansteuerung ein
+#define LRA_SW 1        //0 - Schaltet LRA Ansteuerung aus
+                        //1 - Schaltet LRA Ansteuerung ein
+#define UART_INIT 1     //0 - Schaltet UART ArduinoCapture aus
+                        //1 - Schaltet UART ArduinoCapture ein
+#define CONTRAST 255    //0...255 Setzt OV7670 Kontrast. 
+                        //64 = default
+#define BRIGHTNESS 32   //0...255 Setzt OV7670 Helligheit
+                        //0 = default
 
 void setup() {
   // This is not necessary and has no effect for ATMEGA based Arduinos.
@@ -24,10 +28,10 @@ void setup() {
   CLKPR = 0x80; // enter clock rate change mode
   CLKPR = 0; // set prescaler to 0. WAVGAT MCU has it 3 by default.
 
-  initializeScreenAndCamera(); //Tislenko auskom. für LRA Test
+  initializeScreenAndCamera(); //Tislenko auskom. fï¿½r LRA Test
 
   //Serial.begin(9600);
-  Serial.println("DRV test");
+  
 
   DRVcalib(0);    //calibration for DVR on TCA port 0
   DRVcalib(1);    //calibration for DVR on TCA port 1
@@ -40,11 +44,12 @@ void loop() {
     int FrameNumber_T = 5;
 
     for (int i = 0; i < FrameNumber_T; i++) {
-        processFrame();       //Tislenko auskom. für LRA Test
+        processFrame();       //Tislenko auskom. fï¿½r LRA Test
         }
     
+    Serial.println("loop");
 
-#if UART_ONLY==1
+#if LRA_SW==1
     //Serial.println("link");
     sentGo(0);      //sent DVR waveform trigger on oprt 7
     //delay(1000);
@@ -102,4 +107,3 @@ void sentGo(int I2CPort) {
     drv.begin();
     drv.go();
 }
-
