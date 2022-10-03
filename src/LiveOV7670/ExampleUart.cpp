@@ -8,6 +8,13 @@
 #include "Arduino.h"
 #include "CameraOV7670.h"
 
+#define CONTRAST 255    //0...255 Setzt OV7670 Kontrast. 
+                        //64 = default
+#define BRIGHTNESS 32   //0...255 Setzt OV7670 Helligheit
+                        //0 = default
+//Tislenko: Parameter fuer Graustufen Limit in Funktion formatPixelByteBinary()
+const uint8_t BinaryLimit = 150; // Graustufen Limit
+
 
 // select resolution and communication speed:
 //  1 - 115200bps 160x120 rgb
@@ -27,16 +34,14 @@
 // 15 - 2Mbps 320x240 grayscale
 // 16 - 2Mbps 640x480 rgb
 // 17 - 2Mbps 640x480 grayscale
-#define UART_MODE 8
+#define UART_MODE 2
 
 
-//Tislenko: Globale Variablen 
-//Tislenko: Parameter fuer Graustufen Limit in Funktion formatPixelByteBinary()
-const uint8_t BinaryLimit = 128; // Graustufen Limit
+
 
 //Nutzdaten (Anzahl Pixel in horiz. Linien): 160 bei UART MODE 1,2,7,8,12,13
 //0b0000000 ist Fehlerwert
-//groeﬂer 0b10100000 (160) ist nicht plausibel
+//groesser 0b10100000 (160) ist nicht plausibel
 uint8_t LINE_0 = 0b0000000; 
 uint8_t LINE_1 = 0b0000000; 
 uint8_t LINE_2 = 0b0000000; 
@@ -44,12 +49,16 @@ uint8_t LINE_3 = 0b0000000;
 
 //Nutzdaten (Anzahl Pixel in vert. Linien): 120  UART MODE 8 1,2,7,8,12,13
 //0b0000000 ist Fehlerwert
-//groeﬂer 0b01111000 (120) ist nicht plausibel
+//groesser 0b01111000 (120) ist nicht plausibel
 uint8_t ROW_0 = 0b00000000;
 uint8_t ROW_1 = 0b00000000;
 uint8_t ROW_2 = 0b00000000;
 uint8_t ROW_3 = 0b00000000;
 
+int LINE_0_FRAME[160];      //Reihe 1, Frame 1
+int LINE_1_FRAME[160];      //Reihe 2, Frame 1
+int ROW_0_FRAME[120];       //Spalte 1, Frame 1
+int ROW_1_FRAME[120];       //Spalte 1, Frame 1
 
 const uint8_t VERSION = 0x10;
 const uint8_t COMMAND_NEW_FRAME = 0x01 | VERSION;
@@ -305,7 +314,8 @@ inline void formatNextRgbPixelByteInBuffer() __attribute__((always_inline));
 inline uint8_t formatRgbPixelByteH(uint8_t byte) __attribute__((always_inline));
 inline uint8_t formatRgbPixelByteL(uint8_t byte) __attribute__((always_inline));
 inline uint8_t formatPixelByteGrayscaleFirst(uint8_t byte) __attribute__((always_inline));
-//inline uint8_t formatPixelByteBinary(uint8_t byte) __attribute__((always_inline));
+inline uint8_t formatPixelByteBinary(uint8_t byte) __attribute__((always_inline));
+inline void setBinaryResult(uint8_t value, uint16_t nr) __attribute__((always_inline));
 inline uint8_t formatPixelByteGrayscaleSecond(uint8_t byte) __attribute__((always_inline));
 inline void waitForPreviousUartByteToBeSent() __attribute__((always_inline));
 inline bool isUartReady() __attribute__((always_inline));
@@ -323,7 +333,7 @@ void initializeScreenAndCamera() {
     Serial.begin(baud);
 
 
-    if (camera.init()) {    //OV7570 initialisieren
+    if (camera.init()) {    //OV7670 initialisieren
 //Konfigurierbar zwischen Normalbetrieb und ArduinoCapture Mode
 #if UART_INIT==1            
         sendBlankFrame(COLOR_GREEN);
@@ -337,12 +347,12 @@ void initializeScreenAndCamera() {
 
 //Wenn Kontrast manuell definiert und nicht auskommentiert
 //#ifdef CONTRAST
-        camera.setContrast(255);
+        camera.setContrast(CONTRAST);
 //#endif
 
 //Wenn Helligkeit manuell definier und nicht auskommentiert
 //#ifdef BRIGHTNESS
-        camera.setBrightness(32);
+        camera.setBrightness(BRIGHTNESS);
 //#endif
 
         //Delay, sonnst ist if() leer
@@ -390,7 +400,9 @@ void processGrayscaleFrameBuffered() {
 
     camera.ignoreVerticalPadding();
     //Hier wird jede Reihe (Linie) durchlaufen
+
     for (uint16_t y = 0; y < lineCount; y++) {  
+        
         lineBufferSendByte = &lineBuffer[0];
         camera.ignoreHorizontalPaddingLeft();
 
@@ -404,19 +416,22 @@ void processGrayscaleFrameBuffered() {
             lineBuffer[x] = formatPixelByteGrayscaleFirst(lineBuffer[x]);
             //lineBuffer[x] = formatPixelByteBinary(lineBuffer[x]); //Tislenko
             
+            if (y==60) setBinaryResult(lineBuffer[x], x);       //Tislenko: Linien binaer auswerten
+
             camera.waitForPixelClockRisingEdge(); // YUV422 color byte. Ignore.
            
             if (isSendWhileBuffering) {     //false f¸r UART MODE 8
                 processNextGrayscalePixelByteInBuffer();
             }
-           
+
             x++;
             /**/
             camera.waitForPixelClockRisingEdge(); // YUV422 grayscale byte
             camera.readPixelByte(lineBuffer[x]);
             lineBuffer[x] = formatPixelByteGrayscaleSecond(lineBuffer[x]);
             //lineBuffer[x] = formatPixelByteBinary(lineBuffer[x]); //Tislenko
-
+            
+            if (y == 60) setBinaryResult(lineBuffer[x], x);     //Tislenko: Linien binaer auswerten
             
             camera.waitForPixelClockRisingEdge(); // YUV422 color byte. Ignore.
             
@@ -428,18 +443,27 @@ void processGrayscaleFrameBuffered() {
         }   
         camera.ignoreHorizontalPaddingRight();
 
+
+
+
+
         // Debug info to get some feedback how mutch data was processed during line read.
-        processedByteCountDuringCameraRead = lineBufferSendByte - (&lineBuffer[0]);
-        
+        //processedByteCountDuringCameraRead = lineBufferSendByte - (&lineBuffer[0]);
+        /*
         // Send rest of the line
+        
+        /**/
         while (lineBufferSendByte < &lineBuffer[lineLength]) {
             processNextGrayscalePixelByteInBuffer();
         }
-        
 
         //todo Hier Datenerfassung in Abhaengigkeit der Linie
 
     };
+    for (uint16_t k = 0; k < 160; k++) {
+        Serial.println("Linie:");
+        Serial.println(LINE_0_FRAME[k]);
+    }
 }
 
 void processNextGrayscalePixelByteInBuffer() {
@@ -628,11 +652,6 @@ uint8_t formatRgbPixelByteL(uint8_t pixelByteL) {
 
 
 
-
-
-
-
-
 void commandStartNewFrame(uint8_t pixelFormat) {
     waitForPreviousUartByteToBeSent();
     UDR0 = 0x00; // New command
@@ -698,13 +717,23 @@ bool isUartReady() {
 uint8_t formatPixelByteBinary(uint8_t pixelByte) { //Tislenko
 
     if (pixelByte <= BinaryLimit) {
-        pixelByte = 0b00000010;
+        pixelByte = 1;
     }
     else {
-        pixelByte = 0b11111111;
+        pixelByte = 255;
     }
     return pixelByte;
 }
 
+
+void setBinaryResult(uint8_t value, uint16_t nr) {
+
+    if (value <= BinaryLimit) {
+        LINE_0_FRAME[nr] = 1;
+    }
+    else {
+        LINE_0_FRAME[nr] = 0;
+    }
+}
 
 #endif

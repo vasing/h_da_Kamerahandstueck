@@ -13,14 +13,11 @@ void sentGo(int I2CPort);
 #include "setup.h"
 
 //Tislenko
-#define LRA_SW 1        //0 - Schaltet LRA Ansteuerung aus
+#define LRA_SW 0        //0 - Schaltet LRA Ansteuerung aus
                         //1 - Schaltet LRA Ansteuerung ein
 #define UART_INIT 1     //0 - Schaltet UART ArduinoCapture aus
                         //1 - Schaltet UART ArduinoCapture ein
-#define CONTRAST 255    //0...255 Setzt OV7670 Kontrast. 
-                        //64 = default
-#define BRIGHTNESS 32   //0...255 Setzt OV7670 Helligheit
-                        //0 = default
+
 
 void setup() {
   // This is not necessary and has no effect for ATMEGA based Arduinos.
