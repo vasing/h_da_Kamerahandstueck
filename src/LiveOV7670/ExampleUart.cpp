@@ -34,7 +34,7 @@ const uint8_t BinaryLimit = 150; // Graustufen Limit
 // 15 - 2Mbps 320x240 grayscale
 // 16 - 2Mbps 640x480 rgb
 // 17 - 2Mbps 640x480 grayscale
-#define UART_MODE 2
+#define UART_MODE 4
 
 
 
@@ -55,10 +55,10 @@ uint8_t ROW_1 = 0b00000000;
 uint8_t ROW_2 = 0b00000000;
 uint8_t ROW_3 = 0b00000000;
 
-int LINE_0_FRAME[160];      //Reihe 1, Frame 1
-int LINE_1_FRAME[160];      //Reihe 2, Frame 1
-int ROW_0_FRAME[120];       //Spalte 1, Frame 1
-int ROW_1_FRAME[120];       //Spalte 1, Frame 1
+int LINE_0_FRAME[159];      //Reihe 1, Frame 1
+int LINE_1_FRAME[159];      //Reihe 2, Frame 1
+int ROW_0_FRAME[119];       //Spalte 1, Frame 1
+int ROW_1_FRAME[119];       //Spalte 1, Frame 1
 
 const uint8_t VERSION = 0x10;
 const uint8_t COMMAND_NEW_FRAME = 0x01 | VERSION;
@@ -284,12 +284,12 @@ CameraOV7670 camera(CameraOV7670::RESOLUTION_VGA_640x480, CameraOV7670::PIXEL_YU
 #if UART_MODE==18
 const uint16_t lineLength = 160;
 const uint16_t lineCount = 120;
-const uint32_t baud = 1000000;
+const uint32_t baud = 9600;
 const ProcessFrameData processFrameData = processGrayscaleFrameDirect;
 const uint16_t lineBufferLength = 1;
 const bool isSendWhileBuffering = true;
 const uint8_t uartPixelFormat = UART_PIXEL_FORMAT_GRAYSCALE;
-CameraOV7670 camera(CameraOV7670::RESOLUTION_QQVGA_160x120, CameraOV7670::PIXEL_YUV422, 39);
+CameraOV7670 camera(CameraOV7670::RESOLUTION_QQVGA_160x120, CameraOV7670::PIXEL_YUV422, 2);
 //Tislenko: Kontrast und Helligkeit Voreinstellungen
 #endif
 
@@ -390,6 +390,10 @@ void processFrame() {
     interrupts();
     frameCounter++;
     commandDebugPrint("Frame " + String(frameCounter)/* + " " + String(processedByteCountDuringCameraRead)*/);
+    
+    Serial.println("Frame: ");
+    Serial.println(frameCounter);
+    
     //commandDebugPrint("Frame " + String(frameCounter, 16)); // send number in hexadecimal
 }
 
@@ -403,7 +407,7 @@ void processGrayscaleFrameBuffered() {
 
     for (uint16_t y = 0; y < lineCount; y++) {  
         
-        lineBufferSendByte = &lineBuffer[0];
+        //lineBufferSendByte = &lineBuffer[0];
         camera.ignoreHorizontalPaddingLeft();
 
         //Hier wird jede Spalte (Pixel) durchlaufen
@@ -452,18 +456,21 @@ void processGrayscaleFrameBuffered() {
         /*
         // Send rest of the line
         
-        /**/
+        /*
         while (lineBufferSendByte < &lineBuffer[lineLength]) {
             processNextGrayscalePixelByteInBuffer();
         }
-
+        */
         //todo Hier Datenerfassung in Abhaengigkeit der Linie
 
     };
+    
+    /* Ausgewertete Linien Seriell ausgeben 
     for (uint16_t k = 0; k < 160; k++) {
         Serial.println("Linie:");
         Serial.println(LINE_0_FRAME[k]);
     }
+    */
 }
 
 void processNextGrayscalePixelByteInBuffer() {
