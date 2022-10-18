@@ -15,32 +15,24 @@
                         //64 = default
 #define BRIGHTNESS 32   //0...255 Setzt OV7670 Helligheit
                         //0 = default
-//Tislenko: Parameter fuer Graustufen Limit in Funktion formatPixelByteBinary()
-const uint8_t BinaryLimit = 150; // Graustufen Limit
-
-
-
-Adafruit_DRV2605 drv;
-MyTCA9548A TCA(0x70);
-void DRVcalib(int I2CPort);
-void sentGo(int I2CPort);
-
-// change setup.h to switch between buffered and pixel-by-pixel processing
-
-
-//Tislenko
 #define LRA_SW 1        //0 - Schaltet LRA Ansteuerung aus
                         //1 - Schaltet LRA Ansteuerung ein
 #define UART_INIT 0     //0 - Schaltet UART ArduinoCapture aus
                         //1 - Schaltet UART ArduinoCapture ein
 #define UART_OUTPUT 0   //0 - Schaltet UART Output durch ArduinoCapture aus
                         //1 - Schaltet UART Output durch ArduinoCapture ein
+//Tislenko: Parameter fuer Graustufen Limit in Funktion formatPixelByteBinary()
+const uint8_t BinaryLimit = 150; // Graustufen Limit
 
+const uint16_t MIN_LINE_WIDTH = 10;
 
-uint16_t MIN_LINE_WIDTH = 10;
-uint16_t MAX_LINE_WIDTH = 100;
+const uint16_t MAX_LINE_WIDTH = 100;
 
-uint16_t DetectLineWidth();
+Adafruit_DRV2605 drv;
+MyTCA9548A TCA(0x70);
+void DRVcalib(int I2CPort);
+void sentGo(int I2CPort);
+uint8_t DetectLineWidth();
 void ResetData();
 
 
@@ -393,6 +385,23 @@ void initializeScreenAndCamera() {
         DRVcalib(2);    //calibration for DVR on TCA port 2
         DRVcalib(3);    //calibration for DVR on TCA port 3
 
+
+        //Serial.println("link");
+        sentGo(0);      //LRA "links" (Zeigefinger)
+        delay(500);
+        //Serial.println("unten");
+
+        sentGo(1);      //sent DVR waveform trigger on oprt 6
+        delay(500);
+        //Serial.println("rechts");
+
+        sentGo(2);      //sent DVR waveform trigger on oprt 6
+        delay(500);
+        //Serial.println("oben");
+
+        sentGo(3);      //sent DVR waveform trigger on oprt 6
+        delay(500);
+
     }
 
 }
@@ -430,18 +439,26 @@ void processFrame() {
     frameCounter++;
     commandDebugPrint("Frame " + String(frameCounter)/* + " " + String(processedByteCountDuringCameraRead)*/);
     
-    Serial.println("Frame: ");
-    Serial.println(frameCounter);
+    //Serial.println("Frame: ");
+    //Serial.println(frameCounter);
     
     //commandDebugPrint("Frame " + String(frameCounter, 16)); // send number in hexadecimal
 
-#if LRA_SW==1
+//#if LRA_SW==1
 
-
-    //if ((DetectLineWidth() > MIN_LINE_WIDTH) && (DetectLineWidth() > MAX_LINE_WIDTH)) {
-    //    sentGo(0);
-    //}
-
+    uint8_t lineWidth_top = 0;
+    uint8_t lineWidth_buttom = 0;
+    uint8_t lineWidth_left = 0;
+    uint8_t lineWidth_right = 0;
+    
+    lineWidth_top = DetectLineWidth();
+    Serial.println("Line Width = ");
+    Serial.println(lineWidth_top);
+    commandDebugPrint("Line Width = " + lineWidth_top);
+    if ((lineWidth_top > MIN_LINE_WIDTH) && (lineWidth_top < MAX_LINE_WIDTH)) {
+        sentGo(3);
+    }
+    //sentGo(0);
     //Serial.println("link");
     //sentGo(0);      //LRA "links" (Zeigefinger)
     //delay(1000);
@@ -457,9 +474,9 @@ void processFrame() {
 
     //sentGo(3);      //sent DVR waveform trigger on oprt 6
     //delay(1000);
-#endif
+//#endif
 
-    /**/
+    /*
     //#if UART_ONLY==1
       Serial.println("link");
       sentGo(0);      //sent DVR waveform trigger on oprt 7
@@ -474,7 +491,7 @@ void processFrame() {
       sentGo(3);      //sent DVR waveform trigger on oprt 6
       delay(1000);
     //#endif
-    
+    */
 
 
 }
@@ -489,7 +506,7 @@ void processGrayscaleFrameBuffered() {
 
     for (uint16_t y = 0; y < lineCount; y++) {  
         
-        //lineBufferSendByte = &lineBuffer[0];
+        lineBufferSendByte = &lineBuffer[0];
         camera.ignoreHorizontalPaddingLeft();
 
         //Hier wird jede Spalte (Pixel) durchlaufen
@@ -538,14 +555,14 @@ void processGrayscaleFrameBuffered() {
         /*
         // Send rest of the line
         
-        /*
+        /**/
         while (lineBufferSendByte < &lineBuffer[lineLength]) {
             processNextGrayscalePixelByteInBuffer();
         }
-        */
+        
         //todo Hier Datenerfassung in Abhaengigkeit der Linie
 
-    };
+    }
     
     /* Ausgewertete Linien Seriell ausgeben 
     for (uint16_t k = 0; k < 160; k++) {
@@ -826,13 +843,13 @@ void setBinaryResult(uint8_t value, uint16_t nr) {
 }
 
 
-uint16_t DetectLineWidth() {
+uint8_t DetectLineWidth() {
 
     uint8_t LineWidth = 0;
 
     //uint8_t gap = AllowedGap;
 
-    for (int i = 0; i <= 160; i++) {            //#Durchlaufe Frame Linie
+    for (int i = 0; i <= 159; i++) {            //#Durchlaufe Frame Linie
         if (LINE_0_FRAME[i] == 1) {              //#Suche erstes Pixel
             //FirstDetected = true;               //#DetectLine Start
             LineWidth++;                        //#zähle Linienbreite
