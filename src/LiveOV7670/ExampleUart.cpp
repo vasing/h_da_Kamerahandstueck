@@ -15,11 +15,11 @@
                         //64 = default
 #define BRIGHTNESS 32   //0...255 Setzt OV7670 Helligheit
                         //0 = default
-#define LRA_SW 1        //0 - Schaltet LRA Ansteuerung aus
+#define LRA_OUTPUT 0    //0 - Schaltet LRA Ansteuerung aus
                         //1 - Schaltet LRA Ansteuerung ein
 #define UART_INIT 0     //0 - Schaltet UART ArduinoCapture aus
                         //1 - Schaltet UART ArduinoCapture ein
-#define UART_OUTPUT 0   //0 - Schaltet UART Output durch ArduinoCapture aus
+#define UART_OUTPUT 1   //0 - Schaltet UART Output durch ArduinoCapture aus
                         //1 - Schaltet UART Output durch ArduinoCapture ein
 //Tislenko: Parameter fuer Graustufen Limit in Funktion formatPixelByteBinary()
 const uint8_t BinaryLimit = 150; // Graustufen Limit
@@ -28,11 +28,19 @@ const uint16_t MIN_LINE_WIDTH = 10;
 
 const uint16_t MAX_LINE_WIDTH = 100;
 
+const uint8_t LinePosTop = 20; // Position oft top line in frame
+const uint8_t LinePosBottom = 100; // Position oft top line in frame
+const uint8_t LinePosLeft = 20; // Position oft top line in frame
+const uint8_t LinePosRight = 140; // Position oft top line in frame
+
 Adafruit_DRV2605 drv;
 MyTCA9548A TCA(0x70);
 void DRVcalib(int I2CPort);
 void sentGo(int I2CPort);
-uint8_t DetectLineWidth();
+uint8_t DetectLineWidthTop();
+uint8_t DetectLineWidthBottom();
+uint8_t DetectLineWidthLeft();
+uint8_t DetectLineWidthRight();
 void ResetData();
 
 
@@ -57,7 +65,7 @@ void ResetData();
 #define UART_MODE 4
 
 
-
+/*
 
 //Nutzdaten (Anzahl Pixel in horiz. Linien): 160 bei UART MODE 1,2,7,8,12,13
 //0b0000000 ist Fehlerwert
@@ -75,12 +83,12 @@ uint8_t ROW_1 = 0b00000000;
 uint8_t ROW_2 = 0b00000000;
 uint8_t ROW_3 = 0b00000000;
 
+*/
 
-
-int LINE_0_FRAME[159];      //Reihe 1, Frame 1
-int LINE_1_FRAME[159];      //Reihe 2, Frame 1
-int ROW_0_FRAME[119];       //Spalte 1, Frame 1
-int ROW_1_FRAME[119];       //Spalte 1, Frame 1
+int LINE_TOP[159];      //Reihe 1, Frame 1
+int LINE_BOTTOM[159];      //Reihe 2, Frame 1
+int LINE_LEFT[119];       //Spalte 1, Frame 1
+int LINE_RIGHT[119];       //Spalte 1, Frame 1
 
 const uint8_t VERSION = 0x10;
 const uint8_t COMMAND_NEW_FRAME = 0x01 | VERSION;
@@ -337,7 +345,12 @@ inline uint8_t formatRgbPixelByteH(uint8_t byte) __attribute__((always_inline));
 inline uint8_t formatRgbPixelByteL(uint8_t byte) __attribute__((always_inline));
 inline uint8_t formatPixelByteGrayscaleFirst(uint8_t byte) __attribute__((always_inline));
 inline uint8_t formatPixelByteBinary(uint8_t byte) __attribute__((always_inline));
-inline void setBinaryResult(uint8_t value, uint16_t nr) __attribute__((always_inline));
+
+inline void setBinaryResultTop(uint8_t value, uint8_t nr) __attribute__((always_inline));
+inline void setBinaryResultBottom(uint8_t value, uint8_t nr) __attribute__((always_inline));
+inline void setBinaryResultLeft(uint8_t value, uint8_t nr) __attribute__((always_inline));
+inline void setBinaryResultRight(uint8_t value, uint8_t nr) __attribute__((always_inline));
+
 inline uint8_t formatPixelByteGrayscaleSecond(uint8_t byte) __attribute__((always_inline));
 inline void waitForPreviousUartByteToBeSent() __attribute__((always_inline));
 inline bool isUartReady() __attribute__((always_inline));
@@ -376,9 +389,6 @@ void initializeScreenAndCamera() {
 //#ifdef BRIGHTNESS
         camera.setBrightness(BRIGHTNESS);
 //#endif
-
-        //Delay, sonnst ist if() leer
-        delay(100);
 
         DRVcalib(0);    //calibration for DVR on TCA port 0
         DRVcalib(1);    //calibration for DVR on TCA port 1
@@ -427,12 +437,14 @@ void sendBlankFrame(uint16_t color) {
 
 // this is called in Arduino loop() function
 void processFrame() {
-    
 
-    
     processedByteCountDuringCameraRead = 0;
     //todo Konfigurierbar machen zwischen Normalbetrieb und ArduinoCapture
+
+#if UART_OUTPUT == 1
     commandStartNewFrame(uartPixelFormat);
+#endif
+
     noInterrupts();
     processFrameData();
     interrupts();
@@ -444,20 +456,30 @@ void processFrame() {
     
     //commandDebugPrint("Frame " + String(frameCounter, 16)); // send number in hexadecimal
 
-//#if LRA_SW==1
-
     uint8_t lineWidth_top = 0;
-    uint8_t lineWidth_buttom = 0;
+    uint8_t lineWidth_bottom = 0;
     uint8_t lineWidth_left = 0;
     uint8_t lineWidth_right = 0;
     
-    lineWidth_top = DetectLineWidth();
-    Serial.println("Line Width = ");
-    Serial.println(lineWidth_top);
+    lineWidth_top = DetectLineWidthTop();
+    lineWidth_bottom = DetectLineWidthBottom();
+    lineWidth_left = DetectLineWidthLeft();
+    lineWidth_right = DetectLineWidthRight();
+
+
+    //Serial.println("Line Width = ");
+    //Serial.println(lineWidth_top);
+
+
     commandDebugPrint("Line Width = " + lineWidth_top);
-    if ((lineWidth_top > MIN_LINE_WIDTH) && (lineWidth_top < MAX_LINE_WIDTH)) {
-        sentGo(3);
-    }
+    
+#if LRA_OUTPUT == 1
+    if ((lineWidth_top > MIN_LINE_WIDTH) && (lineWidth_top < MAX_LINE_WIDTH)) sentGo(3);
+    if ((lineWidth_bottom > MIN_LINE_WIDTH) && (lineWidth_bottom < MAX_LINE_WIDTH)) sentGo(1);
+    if ((lineWidth_left > MIN_LINE_WIDTH) && (lineWidth_left < MAX_LINE_WIDTH)) sentGo(0);
+    if ((lineWidth_right > MIN_LINE_WIDTH) && (lineWidth_right < MAX_LINE_WIDTH)) sentGo(2); 
+#endif
+
     //sentGo(0);
     //Serial.println("link");
     //sentGo(0);      //LRA "links" (Zeigefinger)
@@ -466,12 +488,12 @@ void processFrame() {
 
     //sentGo(1);      //sent DVR waveform trigger on oprt 6
     //delay(1000);
+    
     //Serial.println("rechts");
-
     //sentGo(2);      //sent DVR waveform trigger on oprt 6
     //delay(1000);
+    
     //Serial.println("oben");
-
     //sentGo(3);      //sent DVR waveform trigger on oprt 6
     //delay(1000);
 //#endif
@@ -504,29 +526,35 @@ void processGrayscaleFrameBuffered() {
     camera.ignoreVerticalPadding();
     //Hier wird jede Reihe (Linie) durchlaufen
 
-    for (uint16_t y = 0; y < lineCount; y++) {  
+    for (uint8_t y = 0; y < lineCount; y++) {  
         
         lineBufferSendByte = &lineBuffer[0];
         camera.ignoreHorizontalPaddingLeft();
 
         //Hier wird jede Spalte (Pixel) durchlaufen
         //todo Hier auch Datenerfassung in Abhaengigkeit vom Pixel
-        uint16_t x = 0;
+        uint8_t x = 0;
         while (x < lineBufferLength) {       
             
             camera.waitForPixelClockRisingEdge(); // YUV422 grayscale byte
             camera.readPixelByte(lineBuffer[x]);    //readPixelByte() schreibt in den Speicher von lineBuffer[x] die Pixel Bytes
             lineBuffer[x] = formatPixelByteGrayscaleFirst(lineBuffer[x]);
             //lineBuffer[x] = formatPixelByteBinary(lineBuffer[x]); //Tislenko
-            
-            if (y==60) setBinaryResult(lineBuffer[x], x);       //Tislenko: Linien binaer auswerten
+
+
+            if (y == LinePosTop) setBinaryResultTop(lineBuffer[x], x); 
+            if (y == LinePosBottom) setBinaryResultBottom(lineBuffer[x], x);
+            if (x == LinePosLeft) setBinaryResultLeft(lineBuffer[x], y);
+            if (x == LinePosRight) setBinaryResultRight(lineBuffer[x], y);
 
             camera.waitForPixelClockRisingEdge(); // YUV422 color byte. Ignore.
-           
+ 
+
+#if UART_OUTPUT == 1
             if (isSendWhileBuffering) {     //false für UART MODE 8
                 processNextGrayscalePixelByteInBuffer();
             }
-
+#endif
             x++;
             /**/
             camera.waitForPixelClockRisingEdge(); // YUV422 grayscale byte
@@ -534,14 +562,19 @@ void processGrayscaleFrameBuffered() {
             lineBuffer[x] = formatPixelByteGrayscaleSecond(lineBuffer[x]);
             //lineBuffer[x] = formatPixelByteBinary(lineBuffer[x]); //Tislenko
             
-            if (y == 60) setBinaryResult(lineBuffer[x], x);     //Tislenko: Linien binaer auswerten
-            
+
+            if (y == LinePosTop) setBinaryResultTop(lineBuffer[x], x);
+            if (y == LinePosBottom) setBinaryResultBottom(lineBuffer[x], x);
+            if (x == LinePosLeft) setBinaryResultLeft(lineBuffer[x], y);
+            if (x == LinePosRight) setBinaryResultRight(lineBuffer[x], y);
+
             camera.waitForPixelClockRisingEdge(); // YUV422 color byte. Ignore.
-            
+
+#if UART_OUTPUT == 1
             if (isSendWhileBuffering) {
                 processNextGrayscalePixelByteInBuffer();
             }
-            
+#endif           
             x++;     
         }   
         camera.ignoreHorizontalPaddingRight();
@@ -556,10 +589,11 @@ void processGrayscaleFrameBuffered() {
         // Send rest of the line
         
         /**/
+#if UART_OUTPUT == 1
         while (lineBufferSendByte < &lineBuffer[lineLength]) {
             processNextGrayscalePixelByteInBuffer();
         }
-        
+#endif        
         //todo Hier Datenerfassung in Abhaengigkeit der Linie
 
     }
@@ -832,25 +866,81 @@ uint8_t formatPixelByteBinary(uint8_t pixelByte) { //Tislenko
 }
 
 
-void setBinaryResult(uint8_t value, uint16_t nr) {
+void setBinaryResultTop(uint8_t value, uint8_t nr) {
 
     if (value <= BinaryLimit) {
-        LINE_0_FRAME[nr] = 1;
+        LINE_TOP[nr] = 1;
     }
     else {
-        LINE_0_FRAME[nr] = 0;
+        LINE_TOP[nr] = 0;
+    }
+}
+void setBinaryResultBottom(uint8_t value, uint8_t nr) {
+
+    if (value <= BinaryLimit) {
+        LINE_BOTTOM[nr] = 1;
+    }
+    else {
+        LINE_BOTTOM[nr] = 0;
+    }
+}
+void setBinaryResultLeft(uint8_t value, uint8_t nr) {
+
+    if (value <= BinaryLimit) {
+        LINE_LEFT[nr] = 1;
+    }
+    else {
+        LINE_LEFT[nr] = 0;
+    }
+}
+void setBinaryResultRight(uint8_t value, uint8_t nr) {
+
+    if (value <= BinaryLimit) {
+        LINE_RIGHT[nr] = 1;
+    }
+    else {
+        LINE_RIGHT[nr] = 0;
     }
 }
 
-
-uint8_t DetectLineWidth() {
-
+uint8_t DetectLineWidthTop() {
     uint8_t LineWidth = 0;
-
     //uint8_t gap = AllowedGap;
-
     for (int i = 0; i <= 159; i++) {            //#Durchlaufe Frame Linie
-        if (LINE_0_FRAME[i] == 1) {              //#Suche erstes Pixel
+        if (LINE_TOP[i] == 1) {              //#Suche erstes Pixel
+            //FirstDetected = true;               //#DetectLine Start
+            LineWidth++;                        //#zähle Linienbreite
+        }
+    }
+    return LineWidth;
+}
+uint8_t DetectLineWidthBottom() {
+    uint8_t LineWidth = 0;
+    //uint8_t gap = AllowedGap;
+    for (int i = 0; i <= 159; i++) {            //#Durchlaufe Frame Linie
+        if (LINE_BOTTOM[i] == 1) {              //#Suche erstes Pixel
+            //FirstDetected = true;               //#DetectLine Start
+            LineWidth++;                        //#zähle Linienbreite
+        }
+    }
+    return LineWidth;
+}
+uint8_t DetectLineWidthLeft() {
+    uint8_t LineWidth = 0;
+    //uint8_t gap = AllowedGap;
+    for (int i = 0; i <= 119; i++) {            //#Durchlaufe Frame Linie
+        if (LINE_LEFT[i] == 1) {              //#Suche erstes Pixel
+            //FirstDetected = true;               //#DetectLine Start
+            LineWidth++;                        //#zähle Linienbreite
+        }
+    }
+    return LineWidth;
+}
+uint8_t DetectLineWidthRight() {
+    uint8_t LineWidth = 0;
+    //uint8_t gap = AllowedGap;
+    for (int i = 0; i <= 119; i++) {            //#Durchlaufe Frame Linie
+        if (LINE_RIGHT[i] == 1) {              //#Suche erstes Pixel
             //FirstDetected = true;               //#DetectLine Start
             LineWidth++;                        //#zähle Linienbreite
         }
@@ -858,13 +948,21 @@ uint8_t DetectLineWidth() {
     return LineWidth;
 }
 
+
 void ResetData() {
 
     for (int i = 0; i <= 159; i++) {
-        LINE_0_FRAME[i] = 0;
-        LINE_1_FRAME[i] = 0;
+        LINE_TOP[i] = 0;
+        LINE_BOTTOM[i] = 0;
+    }
+    for (int i = 0; i <= 119; i++) {
+        LINE_LEFT[i] = 0;
+        LINE_RIGHT[i] = 0;
     }
 }
+
+
+
 
 
 void DRVcalib(int I2CPort) {
